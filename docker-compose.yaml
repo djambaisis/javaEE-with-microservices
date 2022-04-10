@@ -1,0 +1,97 @@
+version: "3"
+services:
+  rabbitmq-server:  
+    image: rabbitmq:3-alpine
+    container_name: rabbitmq-server
+    hostname: rabbitmq-server
+    ports:
+        - 5672:5672
+        - 15672:15672
+    volumes:
+      - "./rabbitmq/data/:/var/lib/rabbitmq/"
+    networks:
+      - is_network
+        
+  mysql-server:
+    image: mysql
+    environment:
+      - MYSQL_ROOT_PASSWORD=root
+    container_name: 'mysql-server'
+    volumes:
+      - "./mysql/script.sql:/docker-entrypoint-initdb.d/1.sql"
+      - "./mysql/data1/:/var/lib/mysql/"
+      
+    networks:
+      - is_network
+    command: --default-authentication-plugin=mysql_native_password
+    restart: always
+    
+  mysql-server-2:
+    image: mysql
+    environment:
+      - MYSQL_ROOT_PASSWORD=root
+    container_name: 'mysql-server-2'
+    ports:
+      - "3306:3306"
+    volumes:
+      - "./mysql/data2/:/var/lib/mysql/"
+      - "./mysql/script2.sql:/docker-entrypoint-initdb.d/1.sql"
+    networks:
+      - is_network
+    command: --default-authentication-plugin=mysql_native_password
+    restart: always
+    
+
+  evaluation-service:
+    build: ./EvaluationService
+#    image: djambaisis/evaluationservices
+    container_name: evaluation-service
+    environment:
+      - RABBITMQ_HOST=rabbitmq-server
+      - MYSQL_SERVER=mysql-server
+    depends_on:
+      - "rabbitmq-server"
+      - "mysql-server"
+    ports:
+      - 8080:8080
+    networks:
+      - is_network
+      
+      
+  evaluation-s:
+    build: ./MicroEvaluation
+#    image: djambaisis/evaluationservices
+    container_name: evaluation-s
+    environment:
+      - RABBITMQ_HOST=rabbitmq-server
+      - MYSQL_SERVER=mysql-server-2
+    depends_on:
+      - "rabbitmq-server"
+      - "mysql-server-2"
+    ports:
+      - 8081:8080
+    networks:
+      - is_network
+     
+
+  log-service:
+    command: rabbitmq-server
+    build: ./lograbbitmq
+#    image: djambaisis/lograbbitmq
+    container_name: log-service
+    environment:
+      - RABBITMQ_HOST=rabbitmq-server
+    depends_on: 
+      - "rabbitmq-server"
+    command: rabbitmq
+      
+    networks:
+      - is_network
+       
+
+
+networks:
+  is_network:
+  
+    
+    
